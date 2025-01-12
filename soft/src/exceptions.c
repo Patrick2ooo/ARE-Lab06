@@ -28,12 +28,15 @@
 
 #include "address_map_arm.h"
 #include "int_defines.h"
+#include "avalon_function.h"
 /* This file:
  * 1. defines exception vectors for the A9 processor
  * 2. provides code that sets the IRQ mode stack, and that dis/enables interrupts
  * 3. provides code that initializes the generic interrupt controller
 */
-void fpga_ISR(void);
+void fpga_ISR(void){
+	Leds_toggle(LED9);
+}
 
 // Define the IRQ exception handler
 void __attribute__ ((interrupt)) __cs3_isr_irq (void)
@@ -43,10 +46,16 @@ void __attribute__ ((interrupt)) __cs3_isr_irq (void)
 	 **********/
 
 	// Read CPU Interface registers to determine which peripheral has caused an interrupt 
-	
+	int interrupt_ID = *((int *)0xFFFEC10C);
+
 	// Handle the interrupt if it comes from the fpga
+	if (interrupt_ID == 194) // check if interrupt is from the KEYs
+		fpga_ISR(); 
+	else
+		while (1); // if unexpected, then stay here
 
 	// Clear interrupt from the CPU Interface
+	*((int *)0xFFFEC110) = interrupt_ID;
     
 	return;
 } 
@@ -117,5 +126,14 @@ void config_GIC(void)
 	/***********
 	 * TO DO
 	 **********/
-
+	config_interrupt (194, 1);
+	// Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
+	// priorities
+	*((int *) 0xFFFEC104) = 0xFF;  //0xFF instead of 0xFFFF because of our 8 bit priority value for our ICCPMR at the adress 0xFFFEC104.
+	// Set CPU Interface Control Register (ICCICR). Enable signaling of
+	// interrupts
+	*((int *) 0xFFFEC100) = 1;
+	// Configure the Distributor Control Register (ICDDCR) to send pending
+	// interrupts to CPUs
+	*((int *) 0xFFFED000) = 1;
 }
