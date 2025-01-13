@@ -27,6 +27,7 @@
 -- 1.1    07.01.2025  GoninG      Added counter
 -- 1.2    10.01.2025  GoninG      Added irq
 -- 1.3    10.01.2025  GoninG      No compile errors
+-- 1.4    10.01.2025  GoninG      Serial transmitter done
 ------------------------------------------------------------------------------------------
 
 library ieee;
@@ -80,8 +81,9 @@ architecture rtl of avl_user_interface is
   SIGNAL button_s : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	
   -- Con 80p interface
-  SIGNAL code_s : STD_LOGIC_VECTOR(3 DOWNTO 0);
-  SIGNAL data_s : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL data_s : STD_LOGIC_VECTOR(19 DOWNTO 0);
+  SIGNAL serial_data_s : STD_LOGIC;
+  SIGNAL f_ready_s : STD_LOGIC;
   SIGNAL con_80p_status_s : STD_LOGIC_VECTOR(1 DOWNTO 0);
   
   -- Avalon Interface
@@ -103,6 +105,7 @@ architecture rtl of avl_user_interface is
   SIGNAL button0_irq_s : STD_LOGIC;
   SIGNAL clear_irq_s : STD_LOGIC;
   SIGNAL mask_irq_s : STD_LOGIC;
+  SIGNAL clock_count_s : UNSIGNED(6 DOWNTO 0);
 
 begin
   -- Input signals
@@ -155,6 +158,7 @@ begin
 
         WHEN 5 =>
           readdata_next_s(1 DOWNTO 0) <= con_80p_status_s;
+          --readdata_next_s(2) <= READY_s
         
         WHEN 6 =>
           readdata_next_s(31 DOWNTO 0) <= std_logic_vector(counter_value_reg_s);
@@ -219,8 +223,9 @@ begin
             hex3_reg_s <= avl_writedata_i(27 DOWNTO 21);
 
           WHEN 5 =>
-            data_s <= avl_writedata_i(15 DOWNTO 0);
-            code_s <= avl_writedata_i(19 DOWNTO 16);
+            data_s <= avl_writedata_i(19 DOWNTO 0);
+            clock_count_s <= 0; -- guaranteed baudrate
+            serial_data_s <= '0'; -- start bit
           
           WHEN 6 =>
             reset_counter_s <= avl_writedata_i(0);
@@ -295,6 +300,31 @@ begin
     END IF;
   END PROCESS;
 
-  -- Interface management
+  -- Serial transmitter process
+  irq_register_p : PROCESS (avl_reset_i, avl_clk_i)
+  BEGIN
+    IF avl_reset_i = '1' THEN
+      clock_count_s <= '0';
+      f_ready_s <= '1';
+      data_s <= (OTHERS => '1');
+      serial_data_s <= '1';
+
+    ELSIF rising_edge(avl_clk_i) THEN
+
+      -- 1/9600 s = 104,166.67 Nanoseconds so about 5 clk times. Need to transmit 22 bits (20 data + start bit + stop bit) so 110 clock times
+      IF clock_count_s = 110 THEN
+        f_ready_s <= '1';
+      ELSIF clock_count_s(2 DOWNTO 0) = "101" OR clock_count_s(2 DOWNTO 0) = "000"  THEN -- when clock_count is multiple of five we transmit a new bit
+        clock_count_s <= clock_count_s + 1;
+        serial_data_s <= data_s(19); -- MSB
+        data_s(19 DOWNTO 1) <= data_s(18 DOWNTO 0);
+        data_s(0) <= '1'; -- data_ << 1 and append 1 in LSB
+
+      ELSE
+        clock_count_s <= clock_count_s + 1;
+
+      END IF;
+    END IF;
+  END PROCESS;
 
 end rtl; 
