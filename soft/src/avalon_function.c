@@ -136,10 +136,10 @@ void Seg7_write_hex(int seg7_number, uint32_t value){
 void Leds_write(uint32_t value)
 {
 	if (value > 0x3FF)
-	    {
-	        printf("Error: value is too big\n");
-	        return;
-	    }
+	{
+	    printf("Error: value is too big\n");
+	    return;
+	}
 	volatile uint32_t *value_leds = LED_REG;
 	*value_leds = value; // Remplace directement la valeur des LEDs
 }
@@ -175,8 +175,8 @@ bool Key_read(int key_number)
 	return my_key_value;
 }
 
-
-bool positive_edge[4] = {false, false, false, false};
+// Variable to store the state of the keys
+bool positive_edge[4] = {true, true, true, true};
 bool Key_read_edge(int key_number)
 {
 	volatile uint32_t *dataValue = BOUTON_REG;

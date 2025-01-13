@@ -34,7 +34,7 @@
 
 // ACCESS MACROS
 #define INTERFACE_REG(_x_) ((volatile uint32_t *)(INTERFACE_BASE_ADD + _x_)) // _x_ is an offset with respect to the base address
-// #define H2F(_x_)   (volatile uint32_t *)(H2F_BASE_ADD + _x_)
+#define H2F(_x_)   (volatile uint32_t *)(H2F_BASE_ADD + _x_)
 
 // Offset interface
 #define ID_OFFSET       0x0
@@ -114,8 +114,7 @@
 
 #define NUM_MODE 4
 
-// Variable to store the state of the keys
-bool positive_edge[4] = {true, true, true, true};
+
 
 // Leds_write function : Write a value to all Leds (LED9 to LED0)
 // Parameter : "value"= data to be applied to all Leds

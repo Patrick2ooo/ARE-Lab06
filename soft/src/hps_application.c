@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "axi_lw.h"
 #include "uart_function.h"
+#include "avalon_function.h"
 
 int __auto_semihosting;
 
@@ -47,12 +48,14 @@ int __auto_semihosting;
 int main(void){
 
     printf("Laboratoire: Mesure du temps de reaction \n");
-    
-    uart_config();
 
+    Leds_write(0xFF);
+    /*uart_config();    
     while (true){
         send_to_uart("Test\r\n");
         for (volatile int i = 0; i < 1000000; i++);
-    }
+    }*/
+
+    
 
 }
