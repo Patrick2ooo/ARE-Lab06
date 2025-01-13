@@ -32,7 +32,7 @@ int __auto_semihosting;
 
 /****************************************************************************************
  * Uart 0 interrupt number is 194 (p.682)
- * Uart0 base adress is 0xFFC02000 (p.3073)
+ * Uart 0 base adress is 0xFFC02000 (p.3073)
  * 
  * 
  * 
@@ -51,7 +51,7 @@ int main(void){
     uart_config();
 
     while (true){
-        send_to_uart("Test\n");
+        send_to_uart("Test\r\n");
         for (volatile int i = 0; i < 1000000; i++);
     }
 
