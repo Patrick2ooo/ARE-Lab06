@@ -118,6 +118,28 @@ void enable_A9_interrupts(void)
 	asm("msr cpsr, %[ps]" : : [ps]"r"(status));
 }
 
+void config_interrupt(int N, int CPU_target) {
+	int reg_offset, index, value, address;
+	/* Configure the Interrupt Set-Enable Registers (ICDISERn).
+	* reg_offset = (integer_div(N / 32) * 4
+	* value = 1 << (N mod 32) */
+	reg_offset = (N >> 3) & 0xFFFFFFFC;
+	index = N & 0x1F;
+	value = 0x1 << index;
+	address = 0xFFFED100 + reg_offset;
+	/* Now that we know the register address and value, set the appropriate bit */
+	*(int *)address |= value;
+	/* Configure the Interrupt Processor Targets Register (ICDIPTRn)
+	* reg_offset = integer_div(N / 4) * 4
+	* index = N mod 4 */
+	reg_offset = (N & 0xFFFFFFFC);
+	index = N & 0x3;
+	address = 0xFFFED800 + reg_offset + index;
+	/* Now that we know the register address and value, write to (only) the
+	* appropriate byte */
+	*(char *)address = (char)CPU_target;
+}
+
 /* 
  * Configure the Generic Interrupt Controller (GIC)
 */
