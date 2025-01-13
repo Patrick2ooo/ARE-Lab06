@@ -28,6 +28,7 @@
 -- 1.2    10.01.2025  GoninG      Added irq
 -- 1.3    10.01.2025  GoninG      No compile errors
 -- 1.4    10.01.2025  GoninG      Serial transmitter done
+-- 1.5    10.01.2025  GoninG      Renamed process and some error resolved
 ------------------------------------------------------------------------------------------
 
 library ieee;
@@ -81,7 +82,6 @@ architecture rtl of avl_user_interface is
   SIGNAL button_s : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	
   -- Con 80p interface
-  SIGNAL data_s : STD_LOGIC_VECTOR(19 DOWNTO 0);
   SIGNAL serial_data_s : STD_LOGIC;
   SIGNAL f_ready_s : STD_LOGIC;
   SIGNAL con_80p_status_s : STD_LOGIC_VECTOR(1 DOWNTO 0);
@@ -89,7 +89,7 @@ architecture rtl of avl_user_interface is
   -- Avalon Interface
   SIGNAL readdatavalid_next_s : STD_LOGIC;
   SIGNAL readdatavalid_reg_s : STD_LOGIC;
-  SIGNAL readdata_next_s : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL readdata_user_s : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL readdata_reg_s : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL irq_s : STD_LOGIC;
 
@@ -106,6 +106,9 @@ architecture rtl of avl_user_interface is
   SIGNAL clear_irq_s : STD_LOGIC;
   SIGNAL mask_irq_s : STD_LOGIC;
   SIGNAL clock_count_s : UNSIGNED(6 DOWNTO 0);
+  SIGNAL pulse_serial_s : STD_LOGIC;
+  SIGNAL data_reg_s : STD_LOGIC_VECTOR(19 DOWNTO 0);
+  SIGNAL data_user_s : STD_LOGIC_VECTOR(19 DOWNTO 0);
 
 begin
   -- Input signals
@@ -125,13 +128,13 @@ begin
   hex2_o <= hex2_reg_s;
   hex3_o <= hex3_reg_s;
 
-  -- serial_data_o <= ...;
+  serial_data_o <= serial_data_s;
 
   -- Read access part
   read_decoder_p : PROCESS (ALL)
   BEGIN
     readdatavalid_next_s <= '0'; --valeur par defaut
-    readdata_next_s <= (OTHERS => '0'); --valeur par defaut
+    readdata_user_s <= (OTHERS => '0'); --valeur par defaut
 
     IF avl_read_i = '1' THEN
       readdatavalid_next_s <= '1';
@@ -139,35 +142,35 @@ begin
       CASE (to_integer(unsigned(avl_address_i))) IS
 
         WHEN 0 =>
-          readdata_next_s <= INTERFACE_ID_C;
+          readdata_user_s <= INTERFACE_ID_C;
 
         WHEN 1 =>
-          readdata_next_s(3 DOWNTO 0) <= button_s;
+          readdata_user_s(3 DOWNTO 0) <= button_s;
 		 
 		    WHEN 2 =>
-          readdata_next_s(9 DOWNTO 0) <= switches_s;
+          readdata_user_s(9 DOWNTO 0) <= switches_s;
 			 
         WHEN 3 =>
-          readdata_next_s(9 DOWNTO 0) <= led_reg_s;
+          readdata_user_s(9 DOWNTO 0) <= led_reg_s;
 
         WHEN 4 =>
-          readdata_next_s(6 DOWNTO 0) <= hex0_reg_s;
-          readdata_next_s(13 DOWNTO 7) <= hex1_reg_s;
-          readdata_next_s(20 DOWNTO 14) <= hex2_reg_s;
-          readdata_next_s(27 DOWNTO 21) <= hex3_reg_s;
+          readdata_user_s(6 DOWNTO 0) <= hex0_reg_s;
+          readdata_user_s(13 DOWNTO 7) <= hex1_reg_s;
+          readdata_user_s(20 DOWNTO 14) <= hex2_reg_s;
+          readdata_user_s(27 DOWNTO 21) <= hex3_reg_s;
 
         WHEN 5 =>
-          readdata_next_s(1 DOWNTO 0) <= con_80p_status_s;
-          --readdata_next_s(2) <= READY_s
+          readdata_user_s(1 DOWNTO 0) <= con_80p_status_s;
+          readdata_user_s(2) <= f_ready_s;
         
         WHEN 6 =>
-          readdata_next_s(31 DOWNTO 0) <= std_logic_vector(counter_value_reg_s);
+          readdata_user_s(31 DOWNTO 0) <= std_logic_vector(counter_value_reg_s);
         
         WHEN 7 =>
-          readdata_next_s(0) <= irq_s;
+          readdata_user_s(0) <= irq_s;
 
         WHEN OTHERS =>
-          readdata_next_s <= RESERVED_VAL_C;
+          readdata_user_s <= RESERVED_VAL_C;
 
       END CASE;
     END IF;
@@ -182,7 +185,7 @@ begin
 
     ELSIF rising_edge(avl_clk_i) THEN
       readdatavalid_reg_s <= readdatavalid_next_s;
-      readdata_reg_s <= readdata_next_s;
+      readdata_reg_s <= readdata_user_s;
     END IF;
   END PROCESS;
 
@@ -198,12 +201,11 @@ begin
       hex1_reg_s <= (OTHERS => '0');
       hex2_reg_s <= (OTHERS => '0');
       hex3_reg_s <= (OTHERS => '0');
-		  data_s <= (OTHERS => '0');
-      code_s <= (OTHERS => '0');
       reset_counter_s <= '0';
       enable_counter_s <= '0';
       clear_irq_s <= '0';
       mask_irq_s <= '0';
+      pulse_serial_s <= '0';
 
     ELSIF rising_edge(avl_clk_i) THEN
       reset_counter_s <= '0'; --valeur par defaut
@@ -223,9 +225,10 @@ begin
             hex3_reg_s <= avl_writedata_i(27 DOWNTO 21);
 
           WHEN 5 =>
-            data_s <= avl_writedata_i(19 DOWNTO 0);
-            clock_count_s <= 0; -- guaranteed baudrate
-            serial_data_s <= '0'; -- start bit
+            IF(f_ready_s = '1') THEN
+              data_user_s <= avl_writedata_i(19 DOWNTO 0);
+              pulse_serial_s <= '1';
+            END IF;
           
           WHEN 6 =>
             reset_counter_s <= avl_writedata_i(0);
@@ -244,7 +247,7 @@ begin
   END PROCESS;
   
   -- Counter process
-  counter_register_p : PROCESS (avl_reset_i, avl_clk_i)
+  counter_p : PROCESS (avl_reset_i, avl_clk_i)
   BEGIN
     IF avl_reset_i = '1' THEN
       counter_value_reg_s <= (OTHERS => '0');
@@ -280,7 +283,7 @@ begin
   END PROCESS;
 
   -- Irq process
-  irq_register_p : PROCESS (avl_reset_i, avl_clk_i)
+  irq_p : PROCESS (avl_reset_i, avl_clk_i)
   BEGIN
     IF avl_reset_i = '1' THEN
       irq_s <= '0';
@@ -301,12 +304,12 @@ begin
   END PROCESS;
 
   -- Serial transmitter process
-  irq_register_p : PROCESS (avl_reset_i, avl_clk_i)
+  serial_transmitter_p : PROCESS (avl_reset_i, avl_clk_i)
   BEGIN
     IF avl_reset_i = '1' THEN
-      clock_count_s <= '0';
+      clock_count_s <= (OTHERS => '1');
       f_ready_s <= '1';
-      data_s <= (OTHERS => '1');
+      data_reg_s <= (OTHERS => '1');
       serial_data_s <= '1';
 
     ELSIF rising_edge(avl_clk_i) THEN
@@ -314,11 +317,21 @@ begin
       -- 1/9600 s = 104,166.67 Nanoseconds so about 5 clk times. Need to transmit 22 bits (20 data + start bit + stop bit) so 110 clock times
       IF clock_count_s = 110 THEN
         f_ready_s <= '1';
+
+      ELSIF pulse_serial_s = '1' THEN
+        clock_count_s <= clock_count_s + 1; -- clock = '11..11' so clock + 1 = 0
+        serial_data_s <= '0';
+        data_reg_s <= data_user_s;
+        f_ready_s <= '0';
+
+      ELSIF f_ready_s = '1' THEN
+        clock_count_s <= (OTHERS => '1');
+
       ELSIF clock_count_s(2 DOWNTO 0) = "101" OR clock_count_s(2 DOWNTO 0) = "000"  THEN -- when clock_count is multiple of five we transmit a new bit
         clock_count_s <= clock_count_s + 1;
-        serial_data_s <= data_s(19); -- MSB
-        data_s(19 DOWNTO 1) <= data_s(18 DOWNTO 0);
-        data_s(0) <= '1'; -- data_ << 1 and append 1 in LSB
+        serial_data_s <= data_reg_s(19); -- MSB
+        data_reg_s(19 DOWNTO 1) <= data_reg_s(18 DOWNTO 0);
+        data_reg_s(0) <= '1'; -- data_ << 1 and append 1 in LSB
 
       ELSE
         clock_count_s <= clock_count_s + 1;
