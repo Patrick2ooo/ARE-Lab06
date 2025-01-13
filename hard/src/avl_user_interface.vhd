@@ -26,6 +26,7 @@
 -- 1.0    07.01.2025  GoninG      Adapted to my needs
 -- 1.1    07.01.2025  GoninG      Added counter
 -- 1.2    10.01.2025  GoninG      Added irq
+-- 1.3    10.01.2025  GoninG      No compile errors
 ------------------------------------------------------------------------------------------
 
 library ieee;
@@ -71,10 +72,10 @@ architecture rtl of avl_user_interface is
   --| Signals declarations   |--------------------------------------------------------------   
   -- I/O
   SIGNAL led_reg_s : STD_LOGIC_VECTOR(9 DOWNTO 0);
-  SIGNAL hex0_reg_s : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL hex1_reg_s : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL hex2_reg_s : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL hex3_reg_s : STD_LOGIC_VECTOR(7 DOWNTO 0);
+  SIGNAL hex0_reg_s : STD_LOGIC_VECTOR(6 DOWNTO 0);
+  SIGNAL hex1_reg_s : STD_LOGIC_VECTOR(6 DOWNTO 0);
+  SIGNAL hex2_reg_s : STD_LOGIC_VECTOR(6 DOWNTO 0);
+  SIGNAL hex3_reg_s : STD_LOGIC_VECTOR(6 DOWNTO 0);
   SIGNAL switches_s : STD_LOGIC_VECTOR(9 DOWNTO 0);
   SIGNAL button_s : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	
@@ -91,8 +92,8 @@ architecture rtl of avl_user_interface is
   SIGNAL irq_s : STD_LOGIC;
 
   -- Counter
-  SIGNAL counter_value_next_s : STD_LOGIC_VECTOR(31 DOWNTO 0);
-  SIGNAL counter_value_reg_s : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL counter_value_next_s : UNSIGNED(31 DOWNTO 0);
+  SIGNAL counter_value_reg_s : UNSIGNED(31 DOWNTO 0);
   SIGNAL enable_counter_s : STD_LOGIC;
   SIGNAL reset_counter_s : STD_LOGIC;
 
@@ -156,7 +157,7 @@ begin
           readdata_next_s(1 DOWNTO 0) <= con_80p_status_s;
         
         WHEN 6 =>
-          readdata_next_s(31 DOWNTO 0) <= counter_value_reg_s;
+          readdata_next_s(31 DOWNTO 0) <= std_logic_vector(counter_value_reg_s);
         
         WHEN 7 =>
           readdata_next_s(0) <= irq_s;
@@ -212,8 +213,8 @@ begin
             led_reg_s <= avl_writedata_i(9 DOWNTO 0);
 
           WHEN 4 =>
-            hex0_reg_s <= avl_writedata_i(7 DOWNTO 0);
-            hex1_reg_s <= avl_writedata_i(13 DOWNTO 8);
+            hex0_reg_s <= avl_writedata_i(6 DOWNTO 0);
+            hex1_reg_s <= avl_writedata_i(13 DOWNTO 7);
             hex2_reg_s <= avl_writedata_i(20 DOWNTO 14);
             hex3_reg_s <= avl_writedata_i(27 DOWNTO 21);
 
@@ -251,7 +252,9 @@ begin
         counter_value_next_s <= (OTHERS => '0');
       ELSIF enable_counter_s = '0' THEN
         counter_value_next_s <= counter_value_next_s;
-      ELSE THEN
+      ELSIF counter_value_next_s = 4294967296 THEN -- 2^32 = 4 294 967 296
+        counter_value_next_s <= counter_value_next_s; -- counter_value_next_s + 1 would equals 0
+      ELSE
         counter_value_next_s <= counter_value_next_s + 1;
       END IF;
     END IF;
