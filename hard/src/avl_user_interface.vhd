@@ -29,6 +29,7 @@
 -- 1.3    10.01.2025  GoninG      No compile errors
 -- 1.4    10.01.2025  GoninG      Serial transmitter done
 -- 1.5    10.01.2025  GoninG      Renamed process and some error resolved
+-- 2.0    17.01.2025  GoninG      Serial transmitter and simulated (simulate didn't found out other errors)
 ------------------------------------------------------------------------------------------
 
 library ieee;
@@ -70,6 +71,8 @@ architecture rtl of avl_user_interface is
   --| Constants declarations |--------------------------------------------------------------
   CONSTANT INTERFACE_ID_C : STD_LOGIC_VECTOR(31 DOWNTO 0) := x"12345678";
   CONSTANT RESERVED_VAL_C : STD_LOGIC_VECTOR(31 DOWNTO 0) := x"DEADBEEF";
+  CONSTANT AVL_CLOCK_RATE_C : UNSIGNED(27 DOWNTO 0) := x"2FAF080"; -- 50MHz = 0x2FAF080
+  CONSTANT SERIAL_TRANSMITTER_BAUDRATE_C : UNSIGNED(15 DOWNTO 0) := x"2580"; -- 9600 = 0x2580
 
   --| Signals declarations   |--------------------------------------------------------------   
   -- I/O
@@ -105,7 +108,8 @@ architecture rtl of avl_user_interface is
   SIGNAL button0_irq_s : STD_LOGIC;
   SIGNAL clear_irq_s : STD_LOGIC;
   SIGNAL mask_irq_s : STD_LOGIC;
-  SIGNAL clock_count_s : UNSIGNED(6 DOWNTO 0);
+  SIGNAL clock_count_s : UNSIGNED(12 DOWNTO 0); -- 5208 needs 13 bits
+  SIGNAL bits_count_s : UNSIGNED(4 DOWNTO 0); -- 22 bits at max
   SIGNAL pulse_serial_s : STD_LOGIC;
   SIGNAL data_reg_s : STD_LOGIC_VECTOR(19 DOWNTO 0);
   SIGNAL data_user_s : STD_LOGIC_VECTOR(19 DOWNTO 0);
@@ -210,6 +214,7 @@ begin
     ELSIF rising_edge(avl_clk_i) THEN
       reset_counter_s <= '0'; --valeur par defaut
       clear_irq_s <= '0'; --valeur par defaut
+      pulse_serial_s <= '0'; --valeur par defaut
 
       IF avl_write_i = '1' THEN
 
@@ -260,7 +265,7 @@ begin
         counter_value_next_s <= (OTHERS => '0');
       ELSIF enable_counter_s = '0' THEN
         counter_value_next_s <= counter_value_next_s;
-      ELSIF counter_value_next_s = 4294967296 THEN -- 2^32 = 4 294 967 296
+      ELSIF counter_value_next_s = INTEGER'high THEN -- 2^32 = 4 294 967 296
         counter_value_next_s <= counter_value_next_s; -- counter_value_next_s + 1 would equals 0
       ELSE
         counter_value_next_s <= counter_value_next_s + 1;
@@ -307,28 +312,31 @@ begin
   serial_transmitter_p : PROCESS (avl_reset_i, avl_clk_i)
   BEGIN
     IF avl_reset_i = '1' THEN
-      clock_count_s <= (OTHERS => '1');
+      clock_count_s <= (OTHERS => '0');
+      bits_count_s <= (OTHERS => '0');
       f_ready_s <= '1';
       data_reg_s <= (OTHERS => '1');
       serial_data_s <= '1';
 
     ELSIF rising_edge(avl_clk_i) THEN
 
-      -- 1/9600 s = 104,166.67 Nanoseconds so about 5 clk times. Need to transmit 22 bits (20 data + start bit + stop bit) so 110 clock times
-      IF clock_count_s = 110 THEN
+      IF bits_count_s = 22 AND clock_count_s(2 DOWNTO 0) = (AVL_CLOCK_RATE_C/SERIAL_TRANSMITTER_BAUDRATE_C)-1 THEN -- all bits written and last bit holded all the time needed
         f_ready_s <= '1';
-
+        clock_count_s <= (OTHERS => '0');
+        bits_count_s <= (OTHERS => '0');
+        
       ELSIF pulse_serial_s = '1' THEN
-        clock_count_s <= clock_count_s + 1; -- clock = '11..11' so clock + 1 = 0
+        bits_count_s <= "00001"; -- start bit now written
         serial_data_s <= '0';
         data_reg_s <= data_user_s;
         f_ready_s <= '0';
 
       ELSIF f_ready_s = '1' THEN
-        clock_count_s <= (OTHERS => '1');
+        clock_count_s <= (OTHERS => '0');
 
-      ELSIF clock_count_s(2 DOWNTO 0) = "101" OR clock_count_s(2 DOWNTO 0) = "000"  THEN -- when clock_count is multiple of five we transmit a new bit
-        clock_count_s <= clock_count_s + 1;
+      ELSIF clock_count_s = (AVL_CLOCK_RATE_C/SERIAL_TRANSMITTER_BAUDRATE_C)-1  THEN -- when clock_count is avl_clk/baudrate times we write new val
+        clock_count_s <= (OTHERS => '0');
+        bits_count_s <= bits_count_s + 1;
         serial_data_s <= data_reg_s(19); -- MSB
         data_reg_s(19 DOWNTO 1) <= data_reg_s(18 DOWNTO 0);
         data_reg_s(0) <= '1'; -- data_ << 1 and append 1 in LSB
