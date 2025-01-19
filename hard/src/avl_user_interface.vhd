@@ -166,7 +166,8 @@ begin
         WHEN 5 =>
           readdata_user_s(1 DOWNTO 0) <= con_80p_status_s;
           readdata_user_s(2) <= f_ready_s;
-        
+          --readdata_user_s(7 DOWNTO 3) <= std_logic_vector(bits_count_s);
+          --readdata_user_s(10 DOWNTO 8) <= std_logic_vector(clock_count_s(2 DOWNTO 0));
         WHEN 6 =>
           readdata_user_s(31 DOWNTO 0) <= std_logic_vector(counter_value_reg_s);
         
@@ -320,7 +321,7 @@ begin
 
     ELSIF rising_edge(avl_clk_i) THEN
 
-      IF bits_count_s = 22 AND clock_count_s(2 DOWNTO 0) = (AVL_CLOCK_RATE_C/SERIAL_TRANSMITTER_BAUDRATE_C)-1 THEN -- all bits written and last bit holded all the time needed
+      IF bits_count_s = 22 AND clock_count_s = (AVL_CLOCK_RATE_C/SERIAL_TRANSMITTER_BAUDRATE_C)-1 THEN -- all bits written and last bit holded all the time needed
         f_ready_s <= '1';
         clock_count_s <= (OTHERS => '0');
         bits_count_s <= (OTHERS => '0');

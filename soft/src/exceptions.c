@@ -36,6 +36,8 @@
 */
 void fpga_ISR(void){
 	Leds_toggle(LED9);
+	new_time();
+	clear_irq();
 }
 
 // Define the IRQ exception handler
@@ -49,7 +51,7 @@ void __attribute__ ((interrupt)) __cs3_isr_irq (void)
 	int interrupt_ID = *((int *)0xFFFEC10C);
 
 	// Handle the interrupt if it comes from the fpga
-	if (interrupt_ID == 194) // check if interrupt is from the KEYs
+	if (interrupt_ID == 72) // check if interrupt is from the KEYs (FPGA_IRQ0)
 		fpga_ISR(); 
 	else
 		while (1); // if unexpected, then stay here
@@ -148,7 +150,7 @@ void config_GIC(void)
 	/***********
 	 * TO DO
 	 **********/
-	config_interrupt (194, 1);
+	config_interrupt (72, 1);
 	// Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
 	// priorities
 	*((int *) 0xFFFEC104) = 0xFF;  //0xFF instead of 0xFFFF because of our 8 bit priority value for our ICCPMR at the adress 0xFFFEC104.

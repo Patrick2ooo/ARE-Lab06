@@ -34,7 +34,7 @@
 
 // ACCESS MACROS
 #define INTERFACE_REG(_x_) ((volatile uint32_t *)(INTERFACE_BASE_ADD + _x_)) // _x_ is an offset with respect to the base address
-#define H2F(_x_)   (volatile uint32_t *)(H2F_BASE_ADD + _x_)
+//#define H2F(_x_)   (volatile uint32_t *)(H2F_BASE_ADD + _x_)
 
 // Offset interface
 #define ID_OFFSET       0x0
@@ -45,6 +45,7 @@
 
 // Our added adress (TO CHECK IF STILL VALID OR USED)
 #define CON_80P_STATUS_OFFSET           0x14
+#define SERIAL_LINK_READY_OFFSET        0x14
 #define SERIAL_LINK_CODE_OFFSET         0x14
 #define SERIAL_LINK_DATA_OFFSET         0x14
 #define COUNTER_CURRENT_VALUE_OFFSET    0x18
@@ -71,6 +72,7 @@
 #define STATUS_REG  INTERFACE_REG(CON_80P_STATUS_OFFSET)
 
 #define SERIAL_LINK_CODE_REG        INTERFACE_REG(CON_80P_STATUS_OFFSET)
+#define SERIAL_LINK_READY_REG       INTERFACE_REG(SERIAL_LINK_READY_OFFSET)
 #define SERIAL_LINK_DATA_REG        INTERFACE_REG(SERIAL_LINK_CODE_OFFSET)
 #define COUNTER_CURRENT_VALUE_REG   INTERFACE_REG(COUNTER_CURRENT_VALUE_OFFSET)
 #define ENABLE_COUNTER_REG          INTERFACE_REG(ENABLE_COUNTER_OFFSET)
@@ -89,9 +91,18 @@
 
 #define SERIAL_LINK_CODE_MASK     0x000F0000
 #define SERIAL_LINK_DATA_MASK     0x0000FFFF
+#define SERIAL_LINK_READY_MASK    0x00000004
 
 #define ENABLE_COUNTER_MASK      0x00000002
 #define RESET_COUNTER_MASK       0x00000001
+
+#define IRQ_CLEAR_MASK  0x00000001
+#define IRQ_MASK_MASK   0x00000002
+
+#define SWITCH0_MASK    0x00000001
+#define SWITCH1_MASK    0x00000002
+#define SWITCH2_MASK    0x00000004
+#define SWITCH3_MASK    0x00000008
 
 #define SERIAL_LINK_CODE_SHIFT    16
 #define SERIAL_LINK_DATA_SHIFT    0
@@ -114,7 +125,13 @@
 
 #define NUM_MODE 4
 
+#define LED_OFF 0x0
 
+#define WAIT_DISPLAY    0x00847C84
+#define BEGIN_DISPLAY   0x03F1463F
+#define END_DISPLAY     0x000E39C0
+
+uint32_t generate_random(void);
 
 // Leds_write function : Write a value to all Leds (LED9 to LED0)
 // Parameter : "value"= data to be applied to all Leds
@@ -151,6 +168,8 @@ bool Key_read_edge(int key_number);
 // Return : Value of all Switchs (SW9 to SW0)
 uint32_t Switchs_read(void);
 
+bool serial_transmitter_ready();
+
 // Max10_check_status function : Check the status of the LP36
 // Parameter : None
 // Return : True(1) if the status is valid, and False(0) if the status is not valid
@@ -170,7 +189,7 @@ void Max10_write_serial_link(uint32_t value, uint8_t sel);
 // Max10_write_all function : Write a value to all the leds 
 // Parameter : "value"= data to be applied to all the leds of the LP36
 // Return : None
-//void Max10_write_all(uint32_t value);
+// void Max10_write_all(uint32_t value);
 
 // Segs7_init function : Initialize all 7-segments display in PIO core (HEX3 to HEX0)
 void Segs7_init(void);
@@ -194,3 +213,21 @@ void disable_counter();
 uint32_t counter_current_value();
 
 void reset_counter();
+
+void clear_irq();
+
+void Max10_init(void);
+
+void new_time();
+
+void new_attemps();
+
+void start_game();
+
+void Max10_write_square(uint32_t value);
+
+bool is_counter_enabled();
+
+bool new_error();
+
+void Seg7_display(uint32_t switch_value);
