@@ -11,7 +11,7 @@
  * Author               : Anthony Convers
  * Date                 : 27.10.2022
  *
- * Context              : ARE lab
+ * Context              : Configure the exception/IRQ
  *
  *****************************************************************************************
  * Brief: defines exception vectors for the A9 processor
@@ -22,6 +22,7 @@
  * Modifications :
  * Ver    Date        Engineer      Comments
  * 0.0    27.10.2022  ACS           Initial version.
+ * 1.0    26.01.25    MaillardP    	Finished version
  *
 *****************************************************************************************/
 #include <stdint.h>
@@ -35,18 +36,14 @@
  * 3. provides code that initializes the generic interrupt controller
 */
 void fpga_ISR(void){
-	Leds_toggle(LED9);
 	new_time();
+	Leds_toggle(LED9);
 	clear_irq();
 }
 
 // Define the IRQ exception handler
 void __attribute__ ((interrupt)) __cs3_isr_irq (void)
 {
-	/***********
-	 * TO DO
-	 **********/
-
 	// Read CPU Interface registers to determine which peripheral has caused an interrupt 
 	int interrupt_ID = *((int *)0xFFFEC10C);
 
@@ -153,7 +150,7 @@ void config_GIC(void)
 	config_interrupt (72, 1);
 	// Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
 	// priorities
-	*((int *) 0xFFFEC104) = 0xFF;  //0xFF instead of 0xFFFF because of our 8 bit priority value for our ICCPMR at the adress 0xFFFEC104.
+	*((int *) 0xFFFEC104) = 0xFFFF;  //0xFF instead of 0xFFFF because of our 8 bit priority value for our ICCPMR at the adress 0xFFFEC104.
 	// Set CPU Interface Control Register (ICCICR). Enable signaling of
 	// interrupts
 	*((int *) 0xFFFEC100) = 1;

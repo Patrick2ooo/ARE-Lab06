@@ -8,10 +8,10 @@
  *****************************************************************************************
  *
  * File                 : uart_function.c
- * Author               : 
- * Date                 : 
+ * Author               : Maillard Patrick
+ * Date                 : 26.01.25
  *
- * Context              : ARE lab
+ * Context              : Function for UART
  *
  *****************************************************************************************
  * Brief: 
@@ -19,7 +19,7 @@
  *****************************************************************************************
  * Modifications :
  * Ver    Date        Student      Comments
- * 
+ * 1.0    26.01.25    MaillardP    Finished version
  *
 *****************************************************************************************/
 
@@ -36,7 +36,7 @@ void uart_config(){
     uint32_t *uart_dlh  = ((volatile unsigned int *)(UART0_BASE_ADDRESS + IER_DLH));
     uint32_t *uart_ier  = ((volatile unsigned int *)(UART0_BASE_ADDRESS + IER_DLH));
 
-    //configure DLAB of lcr
+    //configure le DLAB de lcr
     *uart_lcr |= 0x80;
 
     // divisor = l4_sp_clk/ (16*baudrate) =~ 651.04
@@ -44,10 +44,10 @@ void uart_config(){
     *uart_dll = 0x8B; // LSB
     *uart_dlh = 0x02; // MSB
 
-    // Configurer LCR : 8 bits de données, parité désactivée, 1 bit de stop (a vérifier)
+    // Configurer LCR : 8 bits de données, parité désactivée, 1 bit de stop
     *uart_lcr = 0x03;
 
-    // Activer les FIFO en réception et transmission (a vérifier)
+    // Activer les FIFO en réception et transmission
     *uart_fcr = 0x01;
 
     // clear DLAB of lcr
@@ -59,12 +59,15 @@ void uart_send_char(char c) {
     uint32_t *uart_thr  = ((volatile unsigned int *)(UART0_BASE_ADDRESS + RBR_THR_DLL)); 
     uint32_t *uart_lsr  = ((volatile unsigned int *)(UART0_BASE_ADDRESS + LSR)); 
 
+    // If the fifo is empty we wait
     while (!(*uart_lsr & LSR_THRE_MASK));
 
+    //send our char to the uart
     *uart_thr = c;
 }
 
 void send_to_uart(const char* mystring){
+
     while (*mystring) {
         uart_send_char(*mystring); 
         mystring++;

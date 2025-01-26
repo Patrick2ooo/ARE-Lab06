@@ -1,3 +1,29 @@
+/*****************************************************************************************
+ * HEIG-VD
+ * Haute Ecole d'Ingenerie et de Gestion du Canton de Vaud
+ * School of Business and Engineering in Canton de Vaud
+ *****************************************************************************************
+ * REDS Institute
+ * Reconfigurable Embedded Digital Systems
+ *****************************************************************************************
+ *
+ * File                 : uart_function.h
+ * Author               : Maillard Patrick
+ * Date                 : 
+ *
+ * Context              : Function for UART
+ *
+ *****************************************************************************************
+ * Brief: 
+ *
+ *****************************************************************************************
+ * Modifications :
+ * Ver    Date        Student      Comments
+ * 1.0    26.01.25    MaillardP    Finished version
+ *
+*****************************************************************************************/
+
+
 
 // Base address
 #define UART0_BASE_ADDRESS 0xFFC02000
@@ -39,7 +65,17 @@
 // MASK 
 #define  LSR_THRE_MASK            0x20
 
-
+// uart_config function : Initialise the UART module so it can send our data correctly
+// Parameter : None
+// Return : None
 void uart_config();
+
+// uart_send_char : Send a character to the UART
+// Parameter : "c" = the character to be sent
+// Return : None
 void uart_send_char(char c);
+
+// send_to_uart : Send a string to the UART
+// Parameter : "c" = the string to be sent
+// Return : None
 void send_to_uart(const char* mystring);

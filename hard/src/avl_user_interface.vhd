@@ -301,7 +301,7 @@ begin
         irq_s <= '0';
         button0_irq_s <= '0';
 
-      ELSIF mask_irq_s = '0' AND button0_s = '1' AND last_button0_state_s = '0' THEN
+      ELSIF mask_irq_s = '0' AND button0_s = '0' AND last_button0_state_s = '1' THEN
         irq_s <= '1';
         button0_irq_s <= '1';
 

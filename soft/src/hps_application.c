@@ -8,10 +8,10 @@
  *****************************************************************************************
  *
  * File                 : hps_application.c
- * Author               : 
- * Date                 : 
+ * Author               : Maillard Patrick
+ * Date                 : 26.01.25
  *
- * Context              : ARE lab
+ * Context              : Main program
  *
  *****************************************************************************************
  * Brief: Mesure du temps de reaction avec la carte DE1-SoC et MAX10
@@ -19,7 +19,7 @@
  *****************************************************************************************
  * Modifications :
  * Ver    Date        Student      Comments
- * 
+ * 1.0    26.01.25    MaillardP    Finished version
  *
 *****************************************************************************************/
 #include <stdint.h>
@@ -35,20 +35,6 @@ void set_A9_IRQ_stack(void);
 void config_GIC(void);
 void enable_A9_interrupts(void);
 
-/****************************************************************************************
- * Uart 0 interrupt number is 194 (p.682)
- * Uart 0 base adress is 0xFFC02000 (p.3073)
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- ****************************************************************************************/
-
 int main(void){
 
     printf("Laboratoire: Mesure du temps de reaction \n");
@@ -58,74 +44,61 @@ int main(void){
 	constante = (volatile uint32_t *)INTERFACE_BASE_ADD;
 	printf("Constante à l'adresse 0xFF210000 de notre interface: 0x%X\n", *constante);
 
+    // Check if the Max10 is connected
     if(!Max10_check_status()){
         printf("Erreur Max10: Configuration non valide.\n");
 		return -1;
     }
 
+    // program initialisation
     Max10_init();
-
+    disable_counter();
     Leds_write(LED_OFF);
     Segs7_init();
     uart_config(); 
     send_to_uart("Reaction Time Measurement Application:\r\n    - Press KEY1 to start a reaction time measurement.\r\n    - Follow the instructions displayed on the Max10_leds.\r\n    - Press KEY0 to stop the measurement.\r\n");
 
+    // IRQ initialisation
     clear_irq();
     set_A9_IRQ_stack();
     config_GIC();
     enable_A9_interrupts();
 
     uint32_t rand_value;
-    uint32_t switch_value;
 
     while(true){
+        // always display based of the switch value
         Seg7_display(Switchs_read());
 
         if(Key_read_edge(1)){
-            no_error();
+            no_error(); 
             send_to_uart("Reaction time measurement started.\r\nWait for the start symbol on Max10_leds and press KEY0 as fast as possible.\r\n");
-            //symbole d'attente    
+            // Waiting symbol  
             Max10_write_square(WAIT_DISPLAY);    
             new_attemps();
+
+            // generate a new waiting time between 1s and 4s
             rand_value = generate_random();
+
+            // restart the counter
             reset_counter();
             enable_counter();
-            while((counter_current_value() * 0.000000020 <= rand_value) && !new_error());
+
+            // Wait till our counter reach the random value or there is no pression on the key 0 before
+            while((counter_current_value() * CLOCK_IN_SECOND <= rand_value) && !new_error());
+
+            // if it there wasnt a pression of key0 before 
             if(!new_error()){
+                // so start the measurement
                 disable_counter();
                 start_game();
-                //symbole de début
+                // Beginning symbol
                 Max10_write_square(BEGIN_DISPLAY);  
+
+                // restart the counter for the measurement
                 reset_counter();
                 enable_counter();
             }
         }
     }
-    /*
-    uint32_t my_reaction_time;
-uint32_t best_reaction_time;
-uint32_t worst_reaction_time;
-uint32_t nbr_of_error;
-uint32_t nbr_of_attempt;
-*/
-
-    /*reset_counter();
-    enable_counter();
-    printf("my counter value before = %d\n", counter_current_value());
-
-    for(int i = 0; i < 10; i++){
-    	printf("%d\n", i);
-    }
-
-    printf("my counter value after = %d\n", counter_current_value());
-    disable_counter();*/
-
-    /*uart_config();    
-    while (true){
-        send_to_uart("Test\r\n");
-        for (volatile int i = 0; i < 1000000; i++);
-    }*/
-
-    
-
 }

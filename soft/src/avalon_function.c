@@ -19,8 +19,8 @@
  *****************************************************************************************
  * Modifications :
  * Ver    Date        Student      Comments
- * 0.0    09.11.2024  RAD & PAM     Initial version.
- *
+ * 0.0    09.11.2024  RAD & PAM    Initial version.
+ * 1.0    26.01.25    MaillardP    modified version for ARE lab6
 *****************************************************************************************/
 #include "avalon_function.h"
 #include <stdio.h>
@@ -47,12 +47,14 @@ const unsigned char seven_segment_map[16] = {
 		0b0001110	// F
 };
 
-double my_reaction_time = 0;
-double best_reaction_time = 9.999;
-double worst_reaction_time = 0;
+// All the value for our time measurement
+float my_reaction_time = 0;
+float best_reaction_time = 9.999;
+float worst_reaction_time = 0;
 uint32_t nbr_of_error = 0;
 uint32_t nbr_of_attempt = 0;
 
+// flag
 bool game_started = false;
 bool error = false;
 
@@ -69,7 +71,7 @@ uint32_t generate_random(void){
         exit(EXIT_FAILURE);
     }
     close(fd);
-	return (random_value % 5);
+	return ((random_value % 4) + 1);
 }
 
 uint32_t Switchs_read(void)
@@ -78,8 +80,7 @@ uint32_t Switchs_read(void)
 	return ((*value_switchs & SWITCHS_BITS));
 }
 
-//TODO
-// Segs7_init function : Initialize all 7-segments display in PIO core (HEX3 to HEX0)
+
 void Segs7_init(void){
 	Seg7_write_hex(0, 0);
 	Seg7_write_hex(1, 0);
@@ -87,10 +88,6 @@ void Segs7_init(void){
 	Seg7_write_hex(3, 0);
 }
 
-// Seg7_write function : Write digit segment value to one 7-segments display (HEX0 or HEX1 or HEX2 or HEX3)
-// Parameter : "seg7_number"= select the 7-segments number, from 0 to 3
-// Parameter : "value"= digit segment value to be applied on the selected 7-segments (maximum 0x7F to switch ON all segments)
-// Return : None
 void Seg7_write(int seg7_number, uint32_t value){
 
 	uint32_t hex_mask;
@@ -119,10 +116,6 @@ void Seg7_write(int seg7_number, uint32_t value){
 	*value_hex |= (~value & hex_mask);
 }
 
-// Seg7_write function : Write digit segment value to one 7-segments display (HEX0 or HEX1 or HEX2 or HEX3)
-// Parameter : "seg7_number"= select the 7-segments number, from 0 to 3
-// Parameter : "value"= digit segment value to be applied on the selected 7-segments (maximum 0x7F to switch ON all segments)
-// Return : None
 void Seg7_reaction_time(double reaction_time){
 	uint32_t hex0_to_3;
 	uint8_t hex0, hex1, hex2, hex3;
@@ -141,10 +134,6 @@ void Seg7_reaction_time(double reaction_time){
 	*value_hex = (hex0_to_3);
 }
 
-// Seg7_write function : Write digit segment value to one 7-segments display (HEX0 or HEX1 or HEX2 or HEX3)
-// Parameter : "seg7_number"= select the 7-segments number, from 0 to 3
-// Parameter : "value"= digit segment value to be applied on the selected 7-segments (maximum 0x7F to switch ON all segments)
-// Return : None
 void Seg7_write_all(uint32_t number){
 	uint32_t hex0_to_3;
 	uint8_t hex0, hex1, hex2, hex3;
@@ -162,12 +151,6 @@ void Seg7_write_all(uint32_t number){
 	*value_hex = (hex0_to_3);
 }
 
-
-// TODO
-// Seg7_write_hex function : Write an Hexadecimal value to one 7-segments display (HEX0 or HEX1 or HEX2 or HEX3)
-// Parameter : "seg7_number"= select the 7-segments number, from 0 to 3
-// Parameter : "value"= Hexadecimal value to be display on the selected 7-segments, form 0x0 to 0xF
-// Return : None
 void Seg7_display(uint32_t switch_value){
 	if(switch_value & SWITCH0_MASK){
 		Seg7_reaction_time(best_reaction_time);
@@ -186,11 +169,6 @@ void Seg7_display(uint32_t switch_value){
 	}
 }
 
-// TODO
-// Seg7_write_hex function : Write an Hexadecimal value to one 7-segments display (HEX0 or HEX1 or HEX2 or HEX3)
-// Parameter : "seg7_number"= select the 7-segments number, from 0 to 3
-// Parameter : "value"= Hexadecimal value to be display on the selected 7-segments, form 0x0 to 0xF
-// Return : None
 void Seg7_write_hex(int seg7_number, uint32_t value){
 	if (value > 0xF){
 		printf("Value chosen isn't an hexadecimal value");
@@ -266,6 +244,7 @@ bool Key_read(int key_number)
 
 // Variable to store the state of the keys
 bool positive_edge[4] = {false, false, false, false};
+
 bool Key_read_edge(int key_number)
 {
 	volatile uint32_t *dataValue = BOUTON_REG;
@@ -290,6 +269,7 @@ void Max10_init(void){
 	uint32_t value = 0x0;
 	volatile uint32_t *max10_data_reg = SERIAL_LINK_DATA_REG;
 
+	// loop over all the possible code setted
 	while(code <= 0xA){
 		if(serial_transmitter_ready()){
 			uint32_t myserial = code << SERIAL_LINK_CODE_SHIFT | value << SERIAL_LINK_DATA_SHIFT;
@@ -302,7 +282,6 @@ void Max10_init(void){
     *max10_data_reg = myserial;
 }
 
-
 bool Max10_check_status(void)
 {
     volatile uint32_t *status = STATUS_REG;
@@ -314,9 +293,10 @@ void Max10_write_serial_link(uint32_t value, uint8_t code)
 	volatile uint32_t *max10_data_reg = SERIAL_LINK_DATA_REG;
     if (code > 0x0A)
     {
-        printf("Erreur : Valeur de sel invalide.\n");
+        printf("Erreur : Valeur du code invalide.\n");
         return;
     }
+	// Wait till the MAX10 tell us we can send another data
 	while(!serial_transmitter_ready()){}
 	uint32_t myserial = code << SERIAL_LINK_CODE_SHIFT | value << SERIAL_LINK_DATA_SHIFT;
     *max10_data_reg = myserial;
@@ -336,30 +316,19 @@ bool serial_transmitter_ready(){
 }
 
 void enable_counter(){
-	volatile uint32_t *enable = ENABLE_COUNTER_REG;
-	*enable = ENABLE_COUNTER_MASK;
+	*(ENABLE_COUNTER_REG) = ENABLE_COUNTER_MASK;
 }
 
 void disable_counter(){
-	volatile uint32_t *disable = ENABLE_COUNTER_REG;
-	*disable &= ~ENABLE_COUNTER_MASK;
-}
-
-bool is_counter_enabled(){
-	volatile uint32_t *enable = ENABLE_COUNTER_REG;
-	return ((*enable & ENABLE_COUNTER_MASK) == ENABLE_COUNTER_MASK);
+	*(ENABLE_COUNTER_REG) = 0;
 }
 
 uint32_t counter_current_value(){
-	volatile uint32_t *value = COUNTER_CURRENT_VALUE_REG;
-	uint32_t counter_value = *value;
-	return counter_value;
+	return *(COUNTER_CURRENT_VALUE_REG);
 }
 
 void reset_counter(){
-	volatile uint32_t *reset = RESET_COUNTER_REG;
-	*reset |= RESET_COUNTER_MASK;
-	*reset &= ~RESET_COUNTER_MASK;
+	*RESET_COUNTER_REG = RESET_COUNTER_MASK;
 }
 
 void clear_irq(){
@@ -368,21 +337,25 @@ void clear_irq(){
 }
 
 void new_time(){
+	// if key0 was pressed when the measurement began
 	if(game_started){
-		my_reaction_time = (double)counter_current_value() * 0.000000020;
+		// so set all the reaction time
+		my_reaction_time = (float)counter_current_value() * (float)CLOCK_IN_SECOND;
 		if(best_reaction_time > my_reaction_time){
 			best_reaction_time = my_reaction_time;
 		}
 		if(worst_reaction_time < my_reaction_time){
 			worst_reaction_time = my_reaction_time;
 		}
-		// display symbole de fin
+		// Ending symbol
 		Max10_write_square(END_DISPLAY);  
 	}
 	else{
+		// if the key0 was pressed before the measurement began we have an error
 		send_to_uart("Error: Premature key press detected.\r\nMeasurement aborted.\r\n");
 		nbr_of_error++;
 		error = true;
+
 		// display off
 		Max10_write_square(0x0);  
 	}
@@ -398,7 +371,6 @@ void new_time(){
 
 	disable_counter();
 	game_started = false;
-
 }
 
 void start_game(){
